@@ -1,0 +1,22 @@
+#!/bin/bash
+
+	if [[ $# -lt 1 ]]
+	then
+	echo -en "\n\n\n\tUSAGE $0 extract.pbf [extract2.pbf]...\n\n\nThis script imports an extract(s) into the rendering DB.\n\nNOTE:  Currently the script only supports importing a single extract file.\n\n\n"
+	exit
+	fi
+
+extracts=$@
+
+clear
+echo -en "\t--- Importing into the rendering DB ---\n"
+echo -en "Running osm2pgsql...\n\n\n"
+osm2pgsql --slim -C 512 --cache-strategy sparse $extracts
+
+#TODO: Actually check the return value to see if there were problems and inform the user.
+echo -en "\n\nPlanet import complete, returned with $?\nCreating timestamp file for renderd."
+
+sudo touch /var/lib/mod_tile/planet-import-complete
+
+sudo /etc/init.d/renderd restart
+

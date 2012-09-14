@@ -1,0 +1,141 @@
+#!/bin/bash
+
+PATH=$PATH:/home/osm/Scripts
+
+
+
+
+
+
+# Introduction
+zenity --info --text="Welcome to the Server Configuration Wizard.
+
+This tool will walk you through downloading the latest map data you need from the internet, unpacking it into one or more databases, and starting the proper server daemons to handle requests.
+
+The process will take anywhere from a few minutes for a complete setup for an area the size of a city, all the way up to a few days for the whole planet.
+
+Recommended hardware requirements:
+
+Download Size	Approx. size		VM RAM	Hard drive
+0-10 mb		City/Small Country	1-4 gb	1 gb normal disk
+10-1000 mb	State/Country		4-8 gb	several gb normal disk
+1-10 gb		Entire Continent	12 gb	1-100 gb ssd/raid array
+~30 gb		Whole Planet		24 gb	1 tb fast raid array
+
+
+
+Press enter to continue..."
+
+# Download Extract
+zenity --info --text="I will now launch a browser to take you to the Geofabrik extract site where you can download the data you need.  You should download the PBF format of each extract that you need.
+
+Close the browser after you have finished downloading all of the data extracts you need.
+
+
+
+Press enter to launch browser..."
+
+firefox http://download.geofabrik.de/
+
+# Install coastlines
+	if [ -e /usr/share/mapnik-osm-data/world_boundaries/processed_p.shp ]
+	then
+	zenity --info --text="Found existing coastline data.
+
+Press enter to continue..."
+	else
+		if zenity --question --text="Did not find existing coastline data.  This data is approximately 500 mb of precomputed shapefiles for coastlines and major world boundaries, made from the OSM database.  It is necessary to render map tiles.
+
+Would you like to download the coastline data?"
+		then
+		echo -en "\n\n\nDownloading coastline data...\n\n\n"
+		sudo /usr/bin/get-coastlines.sh /usr/share/mapnik-osm-data/
+		else
+		echo -en "\n\n\nSkipping download of coastline data.\n\n\n"
+		fi
+	fi
+
+# Import into rendering database
+extracts=*.pbf
+numextracts=`ls *.pbf | wc -l`
+
+	if [[ $numextracts -eq 0 ]]
+	then
+	zenity --info --text="You did not download any PBF extracts to import.  Please make sure the PBF files you want to import are located on the desktop.
+
+
+
+Press enter to exit..."
+	exit -1
+	else
+		if zenity --question --text="$numextracts extract(s) found and ready to import:
+
+`ls -lah *.pbf`
+
+
+
+Would you like to import these extracts into the tile rendering database?"
+		then
+		echo -en "\n\n\nImporting data into rendering database.\n\n\n"
+		
+		import_osm_extract *.pbf
+
+		zenity --info --text="The tile server should now be operational.  No tiles have been rendered yet but when a user's web broweser makes a request for a tile it will be automatically rendered and served to them.  The tile will then be saved in a tile cache and this cached version will be served to future users.
+
+Close the web browser when you have verified that the tileserver is properly handling requests (note that because the rendering happens 'on the fly' you may have to look at an area, wait a bit, and then refresh the page to see the tiles rendered properly).
+
+Please be patient as rendering can take a bit for complicated areas.
+
+
+
+Press enter to launch a web broswer to test the local tile server..."
+
+		firefox http://localhost/osm/slippymap
+
+		else
+		echo -en "\n\n\nSkipping import of data into rendering database.\n\n\n"
+		fi
+	fi
+
+# Import into Nominatim database
+	if zenity --question --text="Nominatim is a geocoding and reverse geocoding service that has its own database separate from the tile rendering database.  Nominatim is used to translate addresses into latitude-longitude pairs (this is called geocoding) and turning lat-lon pairs into addresses (called reverse geocoding).
+
+
+
+Do you want to import the extracts into the Nominatim database?"
+	then
+	echo -en "\n\n\nImporting data into Nominatim database.\n\n\n"
+	
+
+	/home/osm/src/Nominatim/utils/setup.php --osm-file *.pbf --all
+
+	/home/osm/src/Nominatim/utils/specialphrases.php --countries > specialphrases_countries.sql
+	psql -d nominatim -f specialphrases_countries.sql
+
+	/home/osm/src/Nominatim/utils/specialphrases.php --wiki-import > specialphrases.sql
+	psql -d nominatim -f specialphrases.sql
+
+	zenity --info --text="The Nominatim database has been imported and should now be working.  I will launch a web browser and take you to the local nomiantum instance so you can test the search functionality.  Note: the map displayed on the nominatum lookup page comes from an external server, rather than the local one, but the search functionality is coming from the local machine.
+
+
+
+Press enter to launch browser..."
+
+	firefox http://localhost/nominatim/
+	else
+	echo -en "\n\n\nSkipping import of data into Nominatim database.\n\n\n"
+	fi
+
+
+
+
+
+
+
+
+
+
+
+
+
+
