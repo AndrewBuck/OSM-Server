@@ -126,7 +126,13 @@ Press enter to launch browser..."
 	echo -en "\n\n\nSkipping import of data into Nominatim database.\n\n\n"
 	fi
 
+zenity --info --text="  ---  Configuration Successful  ---
 
+Your OSM-Server virtual machine should now be set up.  If you log out of the graphical session at this point, or reboot this VM, the server will continue to operate without the graphical environment running, you do not even need to log in at the initial prompt.  This frees up memory allowing more to be used for cacheing requests allowing the response times to be faster.
+
+
+
+Press enter to close the configuration wizard..." 
 
 
 
